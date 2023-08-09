@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### arquivos baixados ###
+src/main/resources/data/

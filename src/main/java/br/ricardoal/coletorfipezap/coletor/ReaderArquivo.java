@@ -1,31 +1,29 @@
 package br.ricardoal.coletorfipezap.coletor;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class ReaderArquivo {
 
     private final String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
 
-    //TODO: fazer o nome variável
-    private final String NOME_ARQUIVO = "D:\\repos\\coletorfipezap\\src\\main\\resources\\data\\fipezap_desse-mes.xlsx";
+    private final String PASTA_ARQUIVOS = "D:\\repos\\coletorfipezap\\src\\main\\resources\\data\\";
+    private final String ARQUIVO_BAIXADO = "fipezap_desse-mes.xlsx";
+    private final String ARQUIVO_CONVERTIDO = "fipezap_desse-mes.csv";
 
-    private String cidade = "";
+    private String cidade;
+
+    DateFormat dataFormat = new SimpleDateFormat("yyyy-MM");
 
     public void baixar() {
         try(BufferedInputStream in = new BufferedInputStream(new URL(URL_ARQUIVO).openStream());
-            FileOutputStream fileOutputStream = new FileOutputStream(NOME_ARQUIVO)) {
+            FileOutputStream fileOutputStream = new FileOutputStream(PASTA_ARQUIVOS + ARQUIVO_BAIXADO)) {
 
             byte[] dataBuffer = new byte[1024];
             int bytesRead;
@@ -34,45 +32,96 @@ public class ReaderArquivo {
             }
         } catch (IOException e) {
             System.out.println("Erro baixando o arquivo:" + e);
+            //TODO: deletar o arquivo se der erro
+            throw new RuntimeException(e);
         }
     }
 
-    public Map<Integer, List<String>> converter() {
-        Map<Integer, List<String>> data = new HashMap<>();
+    public File converter() {
 
-        try(FileInputStream file = new FileInputStream(new File(NOME_ARQUIVO));
-            Workbook workbook = new XSSFWorkbook(file)) {
+        File convertido = new File(PASTA_ARQUIVOS + ARQUIVO_CONVERTIDO);
+
+        List<String> cabecalho = List.of(
+                "Data",
+                "Indice de vendas residenciais","Variacao mensal de vendas residenciais","Preco medio de vendas residenciais (R$/m²)",
+                "Indice de alugueis residenciais","Variacao mensal de alugueis residenciais","Preco medio de alugueis residenciais (R$/m²)",
+                "Rentabilidade dos alugueis residenciais",
+                "Indice de vendas comerciais","Variacao mensal de vendas comerciais","Preco medio de vendas comerciais (R$/m²)",
+                "Indice de alugueis comerciais","Variacao mensal de alugueis comerciais","Preco medio de alugueis comerciais (R$/m²)",
+                "Rentabilidade dos alugueis comerciais"
+        );
+        int i = 0;
+
+        try(FileInputStream baixado = new FileInputStream(PASTA_ARQUIVOS + ARQUIVO_BAIXADO);
+            Workbook workbook = new XSSFWorkbook(baixado);
+            PrintWriter pw = new PrintWriter(convertido)) {
 
             Sheet planilha = workbook.getSheetAt(3);
             cidade = planilha.getRow(0).getCell(1).toString();
-            int i = 4;
+
+            List<List<String>> linhas = new ArrayList<>();
+            linhas.add(cabecalho);
 
             for (Row linha : planilha) {
-                data.put(i, new ArrayList<>());
-                for (Cell celula : linha) {
-                    switch (celula.getCellType()) {
-                        case STRING:
-                            System.out.println(celula);
-                            break;
-                        case NUMERIC:
-                            System.out.println(celula);
-                            break;
-                        case BOOLEAN:
-                            System.out.println(celula);
-                            break;
-                        case FORMULA:
-                            System.out.println(celula);
-                            break;
-                        default:
-                            data.get(new Integer(i)).add(" ");
-                    }
-                }
                 i++;
+
+                if (linha.getCell(1).getCellType() != CellType.NUMERIC)
+                    continue;
+
+                List<String> dados = new ArrayList<>();
+
+                Date data = linha.getCell(1).getDateCellValue();
+                dados.add(dataFormat.format(data));
+
+                dados.add(trataCelula(linha.getCell(2)));
+                dados.add(trataCelula(linha.getCell(7)));
+                dados.add(trataCelula(linha.getCell(17)));
+
+                dados.add(trataCelula(linha.getCell(22)));
+                dados.add(trataCelula(linha.getCell(27)));
+                dados.add(trataCelula(linha.getCell(37)));
+
+                dados.add(trataCelula(linha.getCell(42)));
+
+                dados.add(trataCelula(linha.getCell(47)));
+                dados.add(trataCelula(linha.getCell(48)));
+                dados.add(trataCelula(linha.getCell(50)));
+
+                dados.add(trataCelula(linha.getCell(51)));
+                dados.add(trataCelula(linha.getCell(52)));
+                dados.add(trataCelula(linha.getCell(54)));
+
+                dados.add(trataCelula(linha.getCell(55)));
+
+                linhas.add(dados);
+
             }
-            return data;
+
+            //TODO: separar essa parte
+            linhas.stream()
+                    .map(this::convertToCSV)
+                    .forEach(pw::println);
+
+            return convertido;
         } catch (IOException e) {
+            System.out.println("Erro convertendo a linha:" + i);
+            throw new RuntimeException(e);
+        } catch (Exception e) {
             System.out.println("Erro convertendo o arquivo:" + e);
+            //TODO: deletar o arquivo se der erro
+            throw new RuntimeException(e);
         }
-        return Collections.emptyMap();
     }
+
+    private String convertToCSV(List<String> data) {
+        return String.join(",", data);
+    }
+
+    private String trataCelula(Cell celula) {
+        if (celula.getCellType().equals(CellType.NUMERIC))
+            return String.valueOf(celula.getNumericCellValue());
+        else
+            return "";
+    }
+
 }
