@@ -13,6 +13,7 @@ public class ColetorfipezapApplication {
 		SpringApplication.run(ColetorfipezapApplication.class, args);
 
 		ReaderArquivo readerArquivo = new ReaderArquivo();
+		readerArquivo.criarDiretorio();
 		readerArquivo.baixar();
 		File arquivoMes = readerArquivo.converter();
 		System.out.println(arquivoMes);

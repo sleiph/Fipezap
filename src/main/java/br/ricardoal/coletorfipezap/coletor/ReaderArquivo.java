@@ -5,6 +5,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -13,7 +15,7 @@ public class ReaderArquivo {
 
     private final String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
 
-    private final String PASTA_ARQUIVOS = "D:\\repos\\coletorfipezap\\src\\main\\resources\\data\\";
+    private final String PASTA_ARQUIVOS = "src\\main\\resources\\arquivos\\";
     private final String ARQUIVO_BAIXADO = "fipezap_desse-mes.xlsx";
     private final String ARQUIVO_CONVERTIDO = "fipezap_desse-mes.csv";
 
@@ -21,9 +23,21 @@ public class ReaderArquivo {
 
     DateFormat dataFormat = new SimpleDateFormat("yyyy-MM");
 
+    public void criarDiretorio() {
+        try {
+            Files.createDirectories(Paths.get(System.getProperty("user.dir") + "\\" + PASTA_ARQUIVOS));
+        } catch (IOException e) {
+            System.out.println("Erro criando o diretorio para download:" + e);
+            throw new RuntimeException(e);
+        }
+    }
+
     public void baixar() {
+
         try(BufferedInputStream in = new BufferedInputStream(new URL(URL_ARQUIVO).openStream());
             FileOutputStream fileOutputStream = new FileOutputStream(PASTA_ARQUIVOS + ARQUIVO_BAIXADO)) {
+
+
 
             byte[] dataBuffer = new byte[1024];
             int bytesRead;
