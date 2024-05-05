@@ -2,7 +2,7 @@ package br.ricardoal.coletorfipezap;
 
 import br.ricardoal.coletorfipezap.coletor.ConversorArquivo;
 import br.ricardoal.coletorfipezap.coletor.ReaderArquivo;
-import br.ricardoal.coletorfipezap.model.Cidade;
+import br.ricardoal.coletorfipezap.model.CidadeType;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -15,10 +15,13 @@ public class ColetorfipezapApplication {
 		ReaderArquivo readerArquivo = new ReaderArquivo();
 		ConversorArquivo conversorArquivo = new ConversorArquivo();
 
+		//TODO: separar essa parte pra só executar se precisar recoletar
 		readerArquivo.criarDiretorio();
 		readerArquivo.baixar();
-		conversorArquivo.converter(Cidade.SAOPAULO);
-		conversorArquivo.converter(Cidade.GUARULHOS);
+
+		for (CidadeType cidade : CidadeType.values()) {
+			conversorArquivo.converter(cidade);
+		}
 
 	}
 

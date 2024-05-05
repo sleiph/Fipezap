@@ -1,6 +1,7 @@
 package br.ricardoal.coletorfipezap.coletor;
 
-import br.ricardoal.coletorfipezap.model.Cidade;
+import br.ricardoal.coletorfipezap.model.CidadeType;
+import br.ricardoal.coletorfipezap.model.ValorInteresseType;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -10,20 +11,21 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static br.ricardoal.coletorfipezap.coletor.ReaderArquivo.ARQUIVO_BAIXADO;
 import static br.ricardoal.coletorfipezap.coletor.ReaderArquivo.PASTA_ARQUIVOS;
 
 public class ConversorArquivo {
 
+    private static final Date inicioColeta = new GregorianCalendar(2008, Calendar.JANUARY, 1).getTime();
+
     private final DateFormat dataFormat = new SimpleDateFormat("yyyy-MM");
 
-    public File converter(Cidade cidade) {
+    public File converter(CidadeType cidadeType) {
 
-        File convertido = new File(PASTA_ARQUIVOS + "fipezap_" + dataFormat.format(new Date()) + "_" + cidade.getNomeArquivo() + ".csv");
+        String nomeSaida = "FipeZap" + cidadeType.getSigla() + "_" + dataFormat.format(inicioColeta) + "_" + dataFormat.format(new Date());
+        File convertido = new File(PASTA_ARQUIVOS + nomeSaida + ".csv");
 
         List<String> cabecalho = List.of(
                 "Data",
@@ -40,8 +42,7 @@ public class ConversorArquivo {
             Workbook workbook = new XSSFWorkbook(baixado);
             PrintWriter pw = new PrintWriter(convertido)) {
 
-            Sheet planilha = workbook.getSheetAt(cidade.getIndiceTab());
-            String nomeCidade = planilha.getRow(0).getCell(1).toString(); //TODO: fazer algo com isso
+            Sheet planilha = workbook.getSheetAt(cidadeType.getIndiceTab());
 
             List<List<String>> linhas = new ArrayList<>();
             linhas.add(cabecalho);
@@ -52,38 +53,12 @@ public class ConversorArquivo {
                 if (linha.getCell(1).getCellType() != CellType.NUMERIC)
                     continue;
 
-                List<String> dados = new ArrayList<>();
-
-                Date data = linha.getCell(1).getDateCellValue();
-                dados.add(dataFormat.format(data));
-
-                dados.add(trataCelula(linha.getCell(2)));
-                dados.add(trataCelula(linha.getCell(7)));
-                dados.add(trataCelula(linha.getCell(17)));
-
-                dados.add(trataCelula(linha.getCell(22)));
-                dados.add(trataCelula(linha.getCell(27)));
-                dados.add(trataCelula(linha.getCell(37)));
-
-                dados.add(trataCelula(linha.getCell(42)));
-
-                dados.add(trataCelula(linha.getCell(47)));
-                dados.add(trataCelula(linha.getCell(48)));
-                dados.add(trataCelula(linha.getCell(50)));
-
-                dados.add(trataCelula(linha.getCell(51)));
-                dados.add(trataCelula(linha.getCell(52)));
-                dados.add(trataCelula(linha.getCell(54)));
-
-                dados.add(trataCelula(linha.getCell(55)));
-
+                List<String> dados = this.converteLinha(linha);
                 linhas.add(dados);
-
             }
 
-            //TODO: separar essa parte
             linhas.stream()
-                    .map(this::convertToCSV)
+                    .map(l -> convertToCSV(l))
                     .forEach(pw::println);
 
             return convertido;
@@ -95,6 +70,19 @@ public class ConversorArquivo {
             //TODO: deletar o arquivo se der erro
             throw new RuntimeException(e);
         }
+    }
+
+    protected List<String> converteLinha(Row linha) {
+        List<String> dados = new ArrayList<>();
+
+        Date data = linha.getCell(1).getDateCellValue();
+        dados.add(dataFormat.format(data));
+
+        for (ValorInteresseType valorInteresse : ValorInteresseType.values()) {
+            dados.add(trataCelula(linha.getCell(valorInteresse.getPosicaoColuna())));
+        }
+
+        return dados;
     }
 
     private String convertToCSV(List<String> data) {
