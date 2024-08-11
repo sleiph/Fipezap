@@ -4,6 +4,8 @@ import br.ricardoal.coletorfipezap.model.CidadeType;
 import br.ricardoal.coletorfipezap.model.ValorInteresseType;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,11 +20,15 @@ import static br.ricardoal.coletorfipezap.coletor.ReaderArquivo.PASTA_ARQUIVOS;
 
 public class ConversorArquivo {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConversorArquivo.class);
+
     private static final Date inicioColeta = new GregorianCalendar(2008, Calendar.JANUARY, 1).getTime();
 
     private final DateFormat dataFormat = new SimpleDateFormat("yyyy-MM");
 
-    public File converter(CidadeType cidadeType) {
+    public void converter(CidadeType cidadeType) {
+
+        LOGGER.info("Convertendo planilha da cidade {}", cidadeType);
 
         String nomeSaida = "FipeZap" + cidadeType.getSigla() + "_" + dataFormat.format(inicioColeta) + "_" + dataFormat.format(new Date());
         File convertido = new File(PASTA_ARQUIVOS + nomeSaida + ".csv");
@@ -50,7 +56,7 @@ public class ConversorArquivo {
             for (Row linha : planilha) {
                 i++;
 
-                if (linha.getCell(1).getCellType() != CellType.NUMERIC)
+                if (linha.getCell(1)==null || linha.getCell(1).getCellType() != CellType.NUMERIC)
                     continue;
 
                 List<String> dados = this.converteLinha(linha);
@@ -61,12 +67,11 @@ public class ConversorArquivo {
                     .map(l -> convertToCSV(l))
                     .forEach(pw::println);
 
-            return convertido;
         } catch (IOException e) {
-            System.out.println("Erro convertendo a linha:" + i);
+            LOGGER.error("Erro convertendo a linha: " + i, e);
             throw new RuntimeException(e);
         } catch (Exception e) {
-            System.out.println("Erro convertendo o arquivo:" + e);
+            LOGGER.error("Erro convertendo o arquivo: ", e);
             //TODO: deletar o arquivo se der erro
             throw new RuntimeException(e);
         }

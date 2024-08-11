@@ -1,11 +1,16 @@
 package br.ricardoal.coletorfipezap.coletor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class ReaderArquivo {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReaderArquivo.class);
 
     private final String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
 
@@ -14,14 +19,17 @@ public class ReaderArquivo {
 
     public void criarDiretorio() {
         try {
+            LOGGER.info("Criando diretorios");
             Files.createDirectories(Paths.get(System.getProperty("user.dir") + "\\" + PASTA_ARQUIVOS));
         } catch (IOException e) {
-            System.out.println("Erro criando o diretorio para download:" + e);
-            throw new RuntimeException(e);
+            LOGGER.error("Erro criando o diretorio para download:", e);
+            throw new RuntimeException("Erro criando o diretorio para download:", e);
         }
     }
 
     public void baixar() {
+
+        LOGGER.info("Baixando arquivo FipeZap");
 
         try(BufferedInputStream in = new BufferedInputStream(new URL(URL_ARQUIVO).openStream());
             FileOutputStream fileOutputStream = new FileOutputStream(PASTA_ARQUIVOS + ARQUIVO_BAIXADO)) {
@@ -32,7 +40,7 @@ public class ReaderArquivo {
                 fileOutputStream.write(dataBuffer, 0, bytesRead);
             }
         } catch (IOException e) {
-            System.out.println("Erro baixando o arquivo:" + e); //TODO: add um logger no projeto
+            LOGGER.error("Erro baixando o arquivo:", e);
             //TODO: deletar o arquivo se der erro
             throw new RuntimeException(e);
         }

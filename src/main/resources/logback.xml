@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<configuration>
+
+    <property name="ignored" value="
+      java.lang.reflect.Method,
+      org.apache.catalina,
+      org.apache.maven.surefire,
+      java.util.concurrent,
+      org.apache.tomcat,
+      org.apache.coyote,
+      org.hibernate,
+      net.sf.cglib,
+      ByCGLIB,
+      org.springframework
+  "/>
+
+    <property name="PROJ_HOME" value="D:\\repos\\coletorfipezap"/>
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>${PROJ_HOME}/logs/coletor.log</file>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level (%F:%L\) : %m%n%rEx{full,${ignored}}</pattern>
+        </encoder>
+    </appender>
+
+    <root>
+        <level value="INFO"/>
+        <appender-ref ref="FILE" />
+    </root>
+
+</configuration>

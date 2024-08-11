@@ -34,3 +34,6 @@ build/
 
 ### arquivos baixados ###
 src/main/resources/arquivos/
+
+### logs
+logs
