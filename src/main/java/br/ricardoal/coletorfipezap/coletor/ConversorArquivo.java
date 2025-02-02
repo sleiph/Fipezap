@@ -2,6 +2,7 @@ package br.ricardoal.coletorfipezap.coletor;
 
 import br.ricardoal.coletorfipezap.model.CidadeType;
 import br.ricardoal.coletorfipezap.model.ValorInteresseType;
+import org.apache.commons.io.FileUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
@@ -15,7 +16,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static br.ricardoal.coletorfipezap.coletor.ReaderArquivo.ARQUIVO_BAIXADO;
 import static br.ricardoal.coletorfipezap.coletor.ReaderArquivo.PASTA_ARQUIVOS;
 
 public class ConversorArquivo {
@@ -26,7 +26,7 @@ public class ConversorArquivo {
 
     private final DateFormat dataFormat = new SimpleDateFormat("yyyy-MM");
 
-    public void converter(CidadeType cidadeType) {
+    public File converter(CidadeType cidadeType, File arquivo) {
 
         LOGGER.info("Convertendo planilha da cidade {}", cidadeType);
 
@@ -35,16 +35,16 @@ public class ConversorArquivo {
 
         List<String> cabecalho = List.of(
                 "Data",
-                "Indice de vendas residenciais","Variacao mensal de vendas residenciais","Preco medio de vendas residenciais (R$/m²)",
-                "Indice de alugueis residenciais","Variacao mensal de alugueis residenciais","Preco medio de alugueis residenciais (R$/m²)",
+                "Indice de vendas residenciais","Variacao mensal de vendas residenciais","Preco medio de vendas residenciais (RS/m2)",
+                "Indice de alugueis residenciais","Variacao mensal de alugueis residenciais","Preco medio de alugueis residenciais (RS/m2)",
                 "Rentabilidade dos alugueis residenciais",
-                "Indice de vendas comerciais","Variacao mensal de vendas comerciais","Preco medio de vendas comerciais (R$/m²)",
-                "Indice de alugueis comerciais","Variacao mensal de alugueis comerciais","Preco medio de alugueis comerciais (R$/m²)",
+                "Indice de vendas comerciais","Variacao mensal de vendas comerciais","Preco medio de vendas comerciais (RS/m2)",
+                "Indice de alugueis comerciais","Variacao mensal de alugueis comerciais","Preco medio de alugueis comerciais (RS/m2)",
                 "Rentabilidade dos alugueis comerciais"
         );
         int i = 0;
 
-        try(FileInputStream baixado = new FileInputStream(PASTA_ARQUIVOS + ARQUIVO_BAIXADO);
+        try(FileInputStream baixado = new FileInputStream(arquivo);
             Workbook workbook = new XSSFWorkbook(baixado);
             PrintWriter pw = new PrintWriter(convertido)) {
 
@@ -67,12 +67,17 @@ public class ConversorArquivo {
                     .map(l -> convertToCSV(l))
                     .forEach(pw::println);
 
-        } catch (IOException e) {
-            LOGGER.error("Erro convertendo a linha: " + i, e);
-            throw new RuntimeException(e);
+            return convertido;
+
         } catch (Exception e) {
             LOGGER.error("Erro convertendo o arquivo: ", e);
-            //TODO: deletar o arquivo se der erro
+
+            try {
+                FileUtils.delete(convertido);
+            } catch (IOException f) {
+                LOGGER.error("E mais um erro deletando o arquivo: ", f);
+            }
+
             throw new RuntimeException(e);
         }
     }
