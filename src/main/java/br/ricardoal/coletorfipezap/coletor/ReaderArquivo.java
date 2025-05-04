@@ -23,8 +23,9 @@ public class ReaderArquivo {
 
     private void criarDiretorio() {
         try {
-            LOGGER.info("Criando diretorios");
-            Files.createDirectories(Paths.get(System.getProperty("user.dir") + "\\" + PASTA_ARQUIVOS));
+            String caminho = System.getProperty("user.dir") + "\\" + PASTA_ARQUIVOS;
+            LOGGER.info("Criando diretorio {} se não existir", caminho);
+            Files.createDirectories(Paths.get(caminho));
         } catch (IOException e) {
             LOGGER.error("Erro criando o diretorio para download:", e);
             throw new RuntimeException("Erro criando o diretorio para download:", e);

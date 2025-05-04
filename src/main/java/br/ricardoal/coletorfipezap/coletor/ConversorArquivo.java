@@ -28,7 +28,7 @@ public class ConversorArquivo {
 
     public File converter(CidadeType cidadeType, File arquivo) {
 
-        LOGGER.info("Convertendo planilha da cidade {}", cidadeType);
+        LOGGER.info("Convertendo planilha {}", cidadeType);
 
         String nomeSaida = "FipeZap" + cidadeType.getSigla() + "_" + dataFormat.format(inicioColeta) + "_" + dataFormat.format(new Date());
         File convertido = new File(PASTA_ARQUIVOS + nomeSaida + ".csv");
