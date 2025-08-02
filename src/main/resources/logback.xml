@@ -15,7 +15,7 @@
       org.springframework
   "/>
 
-    <property name="PROJ_HOME" value="D:\\repos\\coletorfipezap"/>
+    <property name="PROJ_HOME" value="${user.dir}"/>
 
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
         <file>${PROJ_HOME}/logs/coletor.log</file>
