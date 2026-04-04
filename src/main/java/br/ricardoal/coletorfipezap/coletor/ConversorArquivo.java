@@ -7,31 +7,31 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import static br.ricardoal.coletorfipezap.coletor.ReaderArquivo.PASTA_ARQUIVOS;
-
+@Component
 public class ConversorArquivo {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConversorArquivo.class);
 
-    private static final Date inicioColeta = new GregorianCalendar(2008, Calendar.JANUARY, 1).getTime();
-
-    private final DateFormat dataFormat = new SimpleDateFormat("yyyy-MM");
+    private static final LocalDateTime inicioColeta = LocalDateTime.of(2008, Month.JANUARY, 1, 0, 0);
+    private static final DateTimeFormatter dataFormat = DateTimeFormatter.ofPattern("yyyy-MM");
 
     public File converter(CidadeType cidadeType, File arquivo) {
 
         LOGGER.info("Convertendo planilha {}", cidadeType);
 
-        String nomeSaida = "FipeZap" + cidadeType.getSigla() + "_" + dataFormat.format(inicioColeta) + "_" + dataFormat.format(new Date());
-        File convertido = new File(PASTA_ARQUIVOS + nomeSaida + ".csv");
+        String nomeSaida = "FipeZap" + cidadeType.getSigla() + "_" + dataFormat.format(inicioColeta) + "_" + dataFormat.format(LocalDateTime.now());
+        File convertido = new File(arquivo.getParent(), nomeSaida + ".csv");
 
         List<String> cabecalho = List.of(
                 "Data",
@@ -42,7 +42,6 @@ public class ConversorArquivo {
                 "Indice de alugueis comerciais","Variacao mensal de alugueis comerciais","Preco medio de alugueis comerciais (RS/m2)",
                 "Rentabilidade dos alugueis comerciais"
         );
-        int i = 0;
 
         try(FileInputStream baixado = new FileInputStream(arquivo);
             Workbook workbook = new XSSFWorkbook(baixado);
@@ -54,7 +53,6 @@ public class ConversorArquivo {
             linhas.add(cabecalho);
 
             for (Row linha : planilha) {
-                i++;
 
                 if (linha.getCell(1)==null || linha.getCell(1).getCellType() != CellType.NUMERIC)
                     continue;
@@ -64,7 +62,7 @@ public class ConversorArquivo {
             }
 
             linhas.stream()
-                    .map(l -> convertToCSV(l))
+                    .map(this::convertToCSV)
                     .forEach(pw::println);
 
             return convertido;
@@ -85,8 +83,8 @@ public class ConversorArquivo {
     protected List<String> converteLinha(Row linha) {
         List<String> dados = new ArrayList<>();
 
-        Date data = linha.getCell(1).getDateCellValue();
-        dados.add(dataFormat.format(data));
+        LocalDateTime data = linha.getCell(1).getLocalDateTimeCellValue();
+        dados.add(data.format(dataFormat));
 
         for (ValorInteresseType valorInteresse : ValorInteresseType.values()) {
             dados.add(trataCelula(linha.getCell(valorInteresse.getPosicaoColuna())));

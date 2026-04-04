@@ -3,41 +3,45 @@ package br.ricardoal.coletorfipezap.coletor;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
+@Component
 public class ReaderArquivo {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReaderArquivo.class);
 
-    public static final String PASTA_ARQUIVOS = "src\\main\\resources\\arquivos\\";
-    public static final String ARQUIVO_BAIXADO = "fipezap_desse-mes.xlsx";
+    private static final Path PASTA_ARQUIVOS = Paths.get("src", "main", "resources", "arquivos");
+    private static final String ARQUIVO_BAIXADO = "fipezap_desse-mes.xlsx";
 
     public File baixarArquivo() {
-        criarDiretorio();
-        return baixar();
+        Path diretorio = criarDiretorio();
+        return baixar(diretorio);
     }
 
-    private void criarDiretorio() {
+    private Path criarDiretorio() {
         try {
-            String caminho = System.getProperty("user.dir") + "\\" + PASTA_ARQUIVOS;
+            Path absoluto = Paths.get(System.getProperty("user.dir"));
+            Path caminho = absoluto.resolve(PASTA_ARQUIVOS);
             LOGGER.info("Criando diretorio {} se não existir", caminho);
-            Files.createDirectories(Paths.get(caminho));
+            return Files.createDirectories(caminho);
         } catch (IOException e) {
             LOGGER.error("Erro criando o diretorio para download:", e);
             throw new RuntimeException("Erro criando o diretorio para download:", e);
         }
     }
 
-    private File baixar() {
+    private File baixar(Path diretorio) {
 
         LOGGER.info("Baixando arquivo FipeZap");
         String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
 
-        File arquivo = new File(PASTA_ARQUIVOS + ARQUIVO_BAIXADO);
+        File arquivo = new File(new File(diretorio.toUri()), ARQUIVO_BAIXADO);
 
         try(
                 BufferedInputStream in = new BufferedInputStream(new URL(URL_ARQUIVO).openStream());
