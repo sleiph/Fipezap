@@ -1,68 +1,59 @@
 package br.ricardoal.coletorfipezap.coletor;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 @Component
 public class ReaderArquivo {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReaderArquivo.class);
 
-    private static final Path PASTA_ARQUIVOS = Paths.get("src", "main", "resources", "arquivos");
-    private static final String ARQUIVO_BAIXADO = "fipezap_desse-mes.xlsx";
+    private static String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
+    private static final String ARQUIVO_BAIXADO_PREFIX = "fipezap_";
+    private static final String ARQUIVO_BAIXADO_SUFFIX = ".xlsx";
 
     public File baixarArquivo() {
-        Path diretorio = criarDiretorio();
-        return baixar(diretorio);
+        return baixar().toFile();
     }
 
-    private Path criarDiretorio() {
+    private Path baixar() {
+
+        LOGGER.info("Baixando arquivo FipeZap...");
+        Path arquivoTemp = null;
+
         try {
-            Path absoluto = Paths.get(System.getProperty("user.dir"));
-            Path caminho = absoluto.resolve(PASTA_ARQUIVOS);
-            LOGGER.info("Criando diretorio {} se não existir", caminho);
-            return Files.createDirectories(caminho);
-        } catch (IOException e) {
-            LOGGER.error("Erro criando o diretorio para download:", e);
-            throw new RuntimeException("Erro criando o diretorio para download:", e);
-        }
-    }
+            arquivoTemp = Files.createTempFile(ARQUIVO_BAIXADO_PREFIX, ARQUIVO_BAIXADO_SUFFIX);
 
-    private File baixar(Path diretorio) {
+            arquivoTemp.toFile().deleteOnExit();
+            LOGGER.info("Arquivo temporário criado em: {}", arquivoTemp);
 
-        LOGGER.info("Baixando arquivo FipeZap");
-        String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
+            URI uri = URI.create(URL_ARQUIVO);
+            URL url = uri.toURL();
 
-        File arquivo = new File(new File(diretorio.toUri()), ARQUIVO_BAIXADO);
-
-        try(
-                BufferedInputStream in = new BufferedInputStream(new URL(URL_ARQUIVO).openStream());
-                FileOutputStream fileOutputStream = new FileOutputStream(arquivo)
-        ) {
-            byte[] dataBuffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
-                fileOutputStream.write(dataBuffer, 0, bytesRead);
+            try(InputStream in = url.openStream()) {
+                Files.copy(in, arquivoTemp, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            return arquivo;
+            LOGGER.info("Download terminado.");
+            return arquivoTemp;
+
         } catch (IOException e) {
             LOGGER.error("Erro baixando o arquivo: ", e);
-
-            try {
-                FileUtils.delete(arquivo);
-            } catch (IOException f) {
-                LOGGER.error("E erro deletando o arquivo também: ", f);
+            if (arquivoTemp != null) {
+                try {
+                    Files.deleteIfExists(arquivoTemp);
+                } catch (IOException ex) {
+                    LOGGER.error("Erro ao deletar o arquivo temporário corrompido: ", ex);
+                }
             }
-
             throw new RuntimeException(e);
         }
     }
