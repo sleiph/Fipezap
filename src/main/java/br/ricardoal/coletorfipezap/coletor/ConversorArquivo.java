@@ -1,77 +1,65 @@
 package br.ricardoal.coletorfipezap.coletor;
 
 import br.ricardoal.coletorfipezap.model.CidadeType;
+import br.ricardoal.coletorfipezap.model.ColunaType;
 import br.ricardoal.coletorfipezap.model.ValorInteresseType;
-import org.apache.commons.io.FileUtils;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.Month;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class ConversorArquivo {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConversorArquivo.class);
 
-    private static final LocalDateTime inicioColeta = LocalDateTime.of(2008, Month.JANUARY, 1, 0, 0);
-    private static final DateTimeFormatter dataFormat = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final LocalDate INICIO_COLETA = LocalDate.of(2008, Month.JANUARY, 1);
+    private static final DateTimeFormatter DATA_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
 
-    public File converter(CidadeType cidadeType, File arquivo) {
+    public Path converter(CidadeType cidadeType, Path arquivoExcel) {
 
         LOGGER.info("Convertendo planilha {}", cidadeType);
 
-        String nomeSaida = "FipeZap" + cidadeType.getSigla() + "_" + dataFormat.format(inicioColeta) + "_" + dataFormat.format(LocalDateTime.now());
-        File convertido = new File(arquivo.getParent(), nomeSaida + ".csv");
+        String nomeSaida = String.format("FipeZap%s_%s_%s.csv",
+                cidadeType.getSigla(),
+                DATA_FORMAT.format(INICIO_COLETA),
+                DATA_FORMAT.format(LocalDate.now()));
 
-        List<String> cabecalho = List.of(
-                "Data",
-                "Indice de vendas residenciais","Variacao mensal de vendas residenciais","Preco medio de vendas residenciais (RS/m2)",
-                "Indice de alugueis residenciais","Variacao mensal de alugueis residenciais","Preco medio de alugueis residenciais (RS/m2)",
-                "Rentabilidade dos alugueis residenciais",
-                "Indice de vendas comerciais","Variacao mensal de vendas comerciais","Preco medio de vendas comerciais (RS/m2)",
-                "Indice de alugueis comerciais","Variacao mensal de alugueis comerciais","Preco medio de alugueis comerciais (RS/m2)",
-                "Rentabilidade dos alugueis comerciais"
-        );
+        Path arquivoSaida = arquivoExcel.getParent().resolve(nomeSaida);
 
-        try(FileInputStream baixado = new FileInputStream(arquivo);
-            Workbook workbook = new XSSFWorkbook(baixado);
-            PrintWriter pw = new PrintWriter(convertido)) {
+        try (Workbook workbook = WorkbookFactory.create(arquivoExcel.toFile());
+             PrintWriter pw = new PrintWriter(Files.newBufferedWriter(arquivoSaida, StandardCharsets.UTF_8))) {
 
             Sheet planilha = workbook.getSheetAt(cidadeType.getIndiceTab());
-
-            List<List<String>> linhas = new ArrayList<>();
-            linhas.add(cabecalho);
+            pw.println(convertToCSV(ColunaType.getListaColunas()));
 
             for (Row linha : planilha) {
-
-                if (linha.getCell(1)==null || linha.getCell(1).getCellType() != CellType.NUMERIC)
+                Cell celulaData = linha.getCell(1);
+                if (celulaData==null || celulaData.getCellType() != CellType.NUMERIC)
                     continue;
 
                 List<String> dados = this.converteLinha(linha);
-                linhas.add(dados);
+                pw.println(convertToCSV(dados));
             }
 
-            linhas.stream()
-                    .map(this::convertToCSV)
-                    .forEach(pw::println);
-
-            return convertido;
+            return arquivoSaida;
 
         } catch (Exception e) {
-            LOGGER.error("Erro convertendo o arquivo: ", e);
+            LOGGER.error("Erro convertendo o arquivo do tipo {}: ", cidadeType, e);
 
             try {
-                FileUtils.delete(convertido);
+                Files.deleteIfExists(arquivoSaida);
             } catch (IOException f) {
                 LOGGER.error("E mais um erro deletando o arquivo: ", f);
             }
@@ -83,8 +71,8 @@ public class ConversorArquivo {
     protected List<String> converteLinha(Row linha) {
         List<String> dados = new ArrayList<>();
 
-        LocalDateTime data = linha.getCell(1).getLocalDateTimeCellValue();
-        dados.add(data.format(dataFormat));
+        LocalDate data = linha.getCell(1).getLocalDateTimeCellValue().toLocalDate();
+        dados.add(data.format(DATA_FORMAT));
 
         for (ValorInteresseType valorInteresse : ValorInteresseType.values()) {
             dados.add(trataCelula(linha.getCell(valorInteresse.getPosicaoColuna())));
@@ -94,14 +82,37 @@ public class ConversorArquivo {
     }
 
     private String convertToCSV(List<String> data) {
-        return String.join(",", data);
+        return data.stream()
+                .map(this::trataCaracteresEspeciais)
+                .collect(Collectors.joining(","));
     }
 
     private String trataCelula(Cell celula) {
-        if (celula.getCellType().equals(CellType.NUMERIC))
-            return String.valueOf(celula.getNumericCellValue());
-        else
+        if (celula == null) {
             return "";
+        }
+
+        if (celula.getCellType() == CellType.NUMERIC) {
+            double valor = celula.getNumericCellValue();
+            if (valor == (long) valor) {
+                return String.valueOf((long) valor);
+            }
+            return String.valueOf(valor);
+        }
+
+        return "";
+    }
+
+    private String trataCaracteresEspeciais(String dados) {
+        if (dados == null) {
+            return "";
+        }
+        String escapedData = dados.replaceAll("\\R", " "); // Remove quebras de linha dentro da célula
+        if (dados.contains(",") || dados.contains("\"") || dados.contains("'")) {
+            escapedData = escapedData.replace("\"", "\"\"");
+            return "\"" + escapedData + "\"";
+        }
+        return escapedData;
     }
 
 }

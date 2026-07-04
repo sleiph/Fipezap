@@ -10,51 +10,63 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Component
 public class ReaderArquivo {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReaderArquivo.class);
 
-    private static String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
-    private static final String ARQUIVO_BAIXADO_PREFIX = "fipezap_";
-    private static final String ARQUIVO_BAIXADO_SUFFIX = ".xlsx";
+    private static final String URL_ARQUIVO = "https://downloads.fipe.org.br/indices/fipezap/fipezap-serieshistoricas.xlsx";
+    private static final String ARQUIVO_BAIXADO_NOME = "fipezap-serieshistoricas.xlsx";
+    private static final DateTimeFormatter PASTA_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
-    public File baixarArquivo() {
-        return baixar().toFile();
+    public Path baixarArquivo() {
+        Path pastaDestino = criaDiretorioExecucao();
+        return baixar(pastaDestino);
     }
 
-    private Path baixar() {
+    private Path baixar(Path diretorioAlvo) {
 
         LOGGER.info("Baixando arquivo FipeZap...");
-        Path arquivoTemp = null;
+        Path arquivoDestino = diretorioAlvo.resolve(ARQUIVO_BAIXADO_NOME);
 
         try {
-            arquivoTemp = Files.createTempFile(ARQUIVO_BAIXADO_PREFIX, ARQUIVO_BAIXADO_SUFFIX);
-
-            arquivoTemp.toFile().deleteOnExit();
-            LOGGER.info("Arquivo temporário criado em: {}", arquivoTemp);
-
             URI uri = URI.create(URL_ARQUIVO);
             URL url = uri.toURL();
 
             try(InputStream in = url.openStream()) {
-                Files.copy(in, arquivoTemp, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(in, arquivoDestino, StandardCopyOption.REPLACE_EXISTING);
             }
 
             LOGGER.info("Download terminado.");
-            return arquivoTemp;
+            return arquivoDestino;
 
         } catch (IOException e) {
             LOGGER.error("Erro baixando o arquivo: ", e);
-            if (arquivoTemp != null) {
-                try {
-                    Files.deleteIfExists(arquivoTemp);
-                } catch (IOException ex) {
-                    LOGGER.error("Erro ao deletar o arquivo temporário corrompido: ", ex);
-                }
+            try {
+                Files.deleteIfExists(arquivoDestino);
+            } catch (IOException ex) {
+                LOGGER.error("Erro ao deletar arquivo corrompido: ", ex);
             }
             throw new RuntimeException(e);
+        }
+    }
+
+    private Path criaDiretorioExecucao() {
+        try {
+            String nomePasta = "fipezap_" + LocalDateTime.now().format(PASTA_FORMAT);
+            Path diretorioBaseTemp = Path.of(System.getProperty("java.io.tmpdir"));
+            Path diretorioExecucao = diretorioBaseTemp.resolve(nomePasta);
+
+            Files.createDirectories(diretorioExecucao);
+            LOGGER.info("Diretório de execução criado em: {}", diretorioExecucao);
+
+            return diretorioExecucao;
+        } catch (IOException e) {
+            LOGGER.error("Erro ao criar diretório temporário de execução: ", e);
+            throw new RuntimeException("Falha ao inicializar diretório", e);
         }
     }
 

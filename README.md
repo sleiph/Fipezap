@@ -9,3 +9,4 @@
 ### Fazer
 
 - Deixar o usuário escolher a pasta de download
+- Validar valores das colunas

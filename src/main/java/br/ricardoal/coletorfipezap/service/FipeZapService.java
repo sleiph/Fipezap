@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,14 +28,14 @@ public class FipeZapService {
     public void executarColeta() {
 
         //TODO: separar essa parte pra só executar se precisar recoletar
-        File arquivoFipeZap = readerArquivo.baixarArquivo();
+        Path arquivoFipeZap = readerArquivo.baixarArquivo();
 
         List<File> arquivosConvertidos = new ArrayList<>();
         for (CidadeType cidade : CidadeType.values()) {
             if (!cidade.isColetada()) continue;
 
-            File convertido = conversorArquivo.converter(cidade, arquivoFipeZap);
-            arquivosConvertidos.add(convertido);
+            Path convertido = conversorArquivo.converter(cidade, arquivoFipeZap);
+            arquivosConvertidos.add(convertido.toFile());
         }
         LOGGER.info("Arquivos coletados: {}", arquivosConvertidos.size());
     }
